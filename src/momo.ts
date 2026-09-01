@@ -1,3 +1,4 @@
+import { CurrencyCode } from 'currency-codes-ts/dist/types.js';
 import request from 'request';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,6 +14,19 @@ export interface ControllerOptions {
   userId: string;
   /** Your MTN Momo primary key. */
   primaryKey: string;
+
+  targetEnvironment: | 'sandbox'
+  | 'mtncameroon'
+  | 'mtnuganda'
+  | 'mtnghana'
+  | 'mtnivorycoast'
+  | 'mtnzambia'
+  | 'mtnbenin'
+  | 'mtnsouthafrica'
+  | (string & {});
+
+    /** The currency code for the transactions. */
+    currency: CurrencyCode | (string & {});
 }
 
 /**
@@ -25,6 +39,8 @@ export interface RequestToPayResponse {
   referenceId: string;
 }
 
+
+
 /**
  * Provides methods to interact with the MTN Momo Collections API.
  */
@@ -33,26 +49,22 @@ export class Controller {
   private readonly userApiKey: string;
   private readonly userId: string;
   private readonly primaryKey: string;
-
-  constructor({ callbackHost, userApiKey, userId, primaryKey }: ControllerOptions) {
+  private readonly targetEnvironment: ControllerOptions['targetEnvironment'];
+  private readonly currency: ControllerOptions['currency'];
+  constructor({ callbackHost, userApiKey, userId, primaryKey, targetEnvironment, currency }: ControllerOptions) {
     this.callbackHost = callbackHost;
     this.userApiKey = userApiKey;
     this.userId = userId;
     this.primaryKey = primaryKey;
+    this.targetEnvironment = targetEnvironment;
+    this.currency = currency;
   }
 
   /**
    * Generates a new UUID v4.
    */
   async generateUUID(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        const uuid = uuidv4();
-        resolve(uuid);
-      } catch (error) {
-        reject(error);
-      }
-    });
+    return uuidv4();
   }
 
   /**
@@ -60,15 +72,17 @@ export class Controller {
    */
   async requestToPay(
     amount: string | number,
-    currency: string,
-    externalId: string,
-    partyIdType: string,
+    partyIdType: 'MSISDN' | 'EMAIL' | 'PARTY_CODE',
     partyId: string,
-    payerMessage: string,
-    payeeNote: string
+    payerMessage?: string,
+    payeeNote?: string,
+    externalId?: string,
   ): Promise<RequestToPayResponse> {
+    
     const token = await this.getToken();
     const referenceId = await this.generateUUID();
+    externalId = externalId || await this.generateUUID();
+
     return new Promise((resolve, reject) => {
       const options = {
         method: 'POST',
@@ -76,13 +90,13 @@ export class Controller {
         headers: {
           'Content-Type': 'application/json',
           'X-Reference-Id': referenceId,
-          'X-Target-Environment': 'sandbox',
+          'X-Target-Environment': this.targetEnvironment,
           'Ocp-Apim-Subscription-Key': this.primaryKey,
           Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify({
           amount: amount,
-          currency: currency,
+          currency: this.currency,
           externalId: externalId,
           payer: { partyIdType: partyIdType, partyId: partyId },
           payerMessage: payerMessage,
@@ -137,7 +151,7 @@ export class Controller {
         method: 'GET',
         url: `https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/${referenceId}`,
         headers: {
-          'X-Target-Environment': 'sandbox',
+          'X-Target-Environment': this.targetEnvironment,
           'Ocp-Apim-Subscription-Key': this.primaryKey,
           Authorization: 'Bearer ' + token,
         },
