@@ -1,0 +1,5 @@
+- dotenv structure (like at https://github.com/DamianoSilverhand/mtn-momo-node) + dotenv friendly API
+- Poll payment status
+- retries count
+- ISC license migration
+- 

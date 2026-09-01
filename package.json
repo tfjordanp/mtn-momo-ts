@@ -1,5 +1,5 @@
 {
-  "name": "mtn-momo-ts",
+  "name": "@tfjordanp/mtn-momo-ts",
   "version": "1.1.0",
   "description": "The MTN-Momo-API is an npm package that provides a convenient and simplified way to interact with the MoMo (Mobile Money) API for making financial transactions. It abstracts the complexities of the API and offers a streamlined interface for requesting payments and retrieving transaction status.",
   "main": "dist/cjs/index.js",
@@ -40,7 +40,7 @@
     "mobile-money",
     "mtn"
   ],
-  "author": "Tchinda Jordan",
+  "author": "tfjordanp",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/tfjordanp/mtn-momo-ts/issues"
