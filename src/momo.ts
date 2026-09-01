@@ -290,9 +290,10 @@ export class Controller {
    *
    * If the initial request to pay fails (`ok: false`), the failure response is
    * returned directly. If the maximum polling duration is exceeded before a
-   * terminal status is reached, an error is thrown.
+   * terminal status is reached, `'timeout'` is returned.
    */
   async requestToPayAndWait({
+
     amount,
     partyId,
     partyIdType,
@@ -330,5 +331,3 @@ export class Controller {
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-

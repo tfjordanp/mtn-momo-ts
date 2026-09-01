@@ -221,9 +221,10 @@ Initiates a request to pay and polls the transaction status until it reaches a t
   - **`initialDelayMs`**: *(optional)* Initial backoff delay in ms. Defaults to `1_000`.
   - **`backoffMultiplier`**: *(optional)* Backoff multiplier. Defaults to `2`.
 
-Returns a promise that resolves to a `RequestToPayTransactionStatus` **or** a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`). Throws if the maximum polling duration is exceeded.
+Returns a promise that resolves to a `RequestToPayTransactionStatus`, a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`), or `'timeout'` if the maximum polling duration is exceeded.
 
 ### `Controller` class
+
 
 The **`Controller`** class provides methods to interact with the MTN Momo Collections API.
 
@@ -264,10 +265,11 @@ Stateful version of the stateless `requestToPayAndWait` helper. Initiates a requ
 - **`initialDelayMs`**: *(optional)* Initial backoff delay in ms. Defaults to `1_000`.
 - **`backoffMultiplier`**: *(optional)* Backoff multiplier. Defaults to `2`.
 
-Returns a promise that resolves to a `RequestToPayTransactionStatus` **or** a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`). Throws if the maximum polling duration is exceeded.
+Returns a promise that resolves to a `RequestToPayTransactionStatus`, a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`), or `'timeout'` if the maximum polling duration is exceeded.
 
 
 ### Types
+
 
 - **`TargetEnvironment`**: Union of known MTN MoMo environments (or any custom string).
 - **`ErrorCode`**: Union of MTN MoMo API error codes (or any custom string).
@@ -294,6 +296,29 @@ npm run clean
 ```
 
 The build runs `tsc` twice — once for CommonJS (`dist/cjs`) and once for ESM (`dist/esm`) — and writes a `dist/cjs/package.json` marking that directory as CommonJS so Node resolves both formats correctly.
+
+### Testing
+
+The test suite is a set of **integration tests** that run against the MTN MoMo **sandbox** only (never production). It uses [Vitest](https://vitest.dev/) for maximum compatibility (ESM + CJS, TypeScript, CI-friendly).
+
+```bash
+# Run the test suite once
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+Tests read their credentials from a gitignored **`.env.test`** file. To set it up:
+
+1. Copy the template:
+   ```bash
+   cp .env.test.example .env.test
+   ```
+2. Fill in your real MTN MoMo **sandbox** credentials (`MOMO_USER_API_KEY`, `MOMO_USER_ID`, `MOMO_PRIMARY_KEY`, `MOMO_PARTY_ID`, etc.).
+
+If `.env.test` is missing or incomplete, the integration tests **skip gracefully** (with a clear message) instead of failing, so `npm test` never hard-fails on a fresh clone.
+
 
 ## Contributing
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
