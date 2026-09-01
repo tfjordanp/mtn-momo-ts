@@ -1,4 +1,7 @@
-export { Controller, ControllerOptions, RequestToPayResponse } from './momo.js';
+export {
+  Controller,
+  ControllerOptions,
+  RequestToPayResponse,
+  TargetEnvironment,
+} from './momo.js';
 export { makeRequest, MakeRequestOptions, MakeRequestResult } from './momoModule.js';
-
-

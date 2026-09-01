@@ -1,14 +1,15 @@
-const { makeRequest } = require('mtn-momo-api');
+const { makeRequest } = require('mtn-momo-ts');
 
 makeRequest({
   callbackHost: "<callbackHost>",
   userApiKey: "<userApiKey>",
   userId: "<userId>",
   primaryKey: "<primaryKey>",
+  targetEnvironment: "mtncameroon",
+  currency: "XAF",
   amount: "<amount>",
-  currency: "<currency>",
   externalId: "<externalId>",
-  partyIdType: "<partyIdType..eg..MSISDN>",
+  partyIdType: "MSISDN",
   partyId: "<partyId>",
   payerMessage: "<payerMessage>",
   payeeNote: "<payeeNote>"

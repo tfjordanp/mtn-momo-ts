@@ -1,6 +1,25 @@
+import axios from 'axios';
 import { CurrencyCode } from 'currency-codes-ts/dist/types.js';
-import request from 'request';
 import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * The MTN MoMo target environment. Use one of the known values for
+ * autocomplete, or any custom string for a custom environment.
+ */
+export type TargetEnvironment =
+  | 'sandbox'
+  | 'mtncameroon'
+  | 'mtnuganda'
+  | 'mtnghana'
+  | 'mtnivorycoast'
+  | 'mtnzambia'
+  | 'mtnbenin'
+  | 'mtnsouthafrica'
+  | 'mtncongo'
+  | 'mtnswaziland'
+  | 'mtnguineaconakry'
+  | 'mtnliberia'
+  | (string & {});    //taken from https://momodevelopercommunity.mtn.com/how-to-59/momo-api-production-configuration-101
 
 /**
  * Options for constructing a {@link Controller} instance.
@@ -14,31 +33,96 @@ export interface ControllerOptions {
   userId: string;
   /** Your MTN Momo primary key. */
   primaryKey: string;
-
-  targetEnvironment: | 'sandbox'
-  | 'mtncameroon'
-  | 'mtnuganda'
-  | 'mtnghana'
-  | 'mtnivorycoast'
-  | 'mtnzambia'
-  | 'mtnbenin'
-  | 'mtnsouthafrica'
-  | (string & {});
-
-    /** The currency code for the transactions. */
-    currency: CurrencyCode | (string & {});
+  /** The MTN MoMo target environment (e.g. `'sandbox'`, `'mtncameroon'`). */
+  targetEnvironment: TargetEnvironment;
+  /** The currency code for the transactions. */
+  currency?: CurrencyCode | (string & {});
 }
 
-/**
- * The response returned by {@link Controller.requestToPay}.
- */
-export interface RequestToPayResponse {
-  /** The response code from the API. */
-  responseCode: string | number;
-  /** The reference ID generated for the transaction. */
+export type ErrorCode = 
+  | 'PAYER_NOT_FOUND'
+  | 'NOT_ALLOWED'
+  | 'NOT_ALLOWED_TARGET_ENVIRONMENT'
+  | 'INVALID_CALLBACK_URL_HOST'
+  | 'INVALID_CURRENCY'
+  | 'SERVICE_UNAVAILABLE'
+  | 'INTERNAL_PROCESSING_ERROR'
+  | 'NOT_ENOUGH_FUNDS'
+  | 'PAYER_LIMIT_REACHED'
+  | 'PAYEE_NOT_ALLOWED_TO_RECEIVE'
+  | 'PAYMENT_NOT_APPROVED'
+  | 'RESOURCE_NOT_FOUND'
+  | 'APPROVAL_REJECTED'
+  | 'EXPIRED'
+  | 'TRANSACTION_CANCELED'
+  | 'TRANSACTION_CANCELED.'
+  | 'RESOURCE_ALREADY_EXIST'
+  | 'TRANSACTION_NOT_COMPLETED'
+  | 'TRANSACTION_NOT_FOUND'
+  | 'INFORMATIONAL_SCOPE_INSTRUCTION'
+  | 'MISSING_SCOPE_INSTRUCTION'
+  | 'MORE_THAN_ONE_FINANCIAL_SCOPE_NOT_SUPPORTED'
+  | 'UNSUPPORTED_SCOPE_COMBINATION'
+  | 'CONSENT_MISMATCH'
+  | 'UNSUPPORTED_SCOPE'
+  | 'NOT_FOUND'
+  | (string & {});    //taken from https://momoapi.mtn.com/API-collections#api=collection&operation=requesttopay-referenceId-GET (includes duplicated "TRANSACTION_CANCELED" from sandbox API, alias is "TRANSACTION_CANCELED.")
+
+
+
+export type PartyIdType = 'MSISDN' | 'EMAIL' | 'PARTY_CODE';
+
+export type ErrorReason = { code?: ErrorCode; message?: string };
+
+export type RequestToPayResponse = {
+  statusCode: number;
   referenceId: string;
+  externalId: string;
+  payerMessage: string;
+  payeeNote: string;
+} & (
+  | { ok: true }
+  | { ok: false; error: ErrorReason }
+);
+
+export interface RequestToPayTransactionStatus {
+  amount?: string;
+  currency?: string;
+  financialTransactionId?: string;
+  externalId?: string;
+  payer:  {
+    partyIdType?: PartyIdType;
+    partyId?: string;
+  };
+  payerMessage?: string;
+  payeeNote?: string;
+  status?: 'SUCCESSFUL' | 'FAILED' | 'PENDING' | (string & {});    //taken from https://momodevelopercommunity.mtn.com/product-updates/momo-api-error-response-enrichment-186
+  reason?: ErrorReason;
 }
 
+export const DEFAULT_TARGET_CURRENCY: Record<   //infered from https://momodevelopercommunity.mtn.com/how-to-59/momo-api-production-configuration-101
+  Exclude<TargetEnvironment, (string & {})>,
+  CurrencyCode
+> = {
+  sandbox: 'EUR',
+  mtnuganda: 'UGX',
+  mtnghana: 'GHS',
+  mtnivorycoast: 'XOF',
+  mtnzambia: 'ZMW',
+  mtncameroon: 'XAF',
+  mtnbenin: 'XOF',
+  mtncongo: 'XAF',
+  mtnswaziland: 'SZL',
+  mtnguineaconakry: 'GNF',
+  mtnsouthafrica: 'ZAR',
+  mtnliberia: 'LRD',
+};
+
+function defaultCurrencyForEnvironment(
+  targetEnvironment: TargetEnvironment,
+): CurrencyCode | (string & {}) {
+  return DEFAULT_TARGET_CURRENCY[targetEnvironment as Exclude<TargetEnvironment, (string & {})>] || 'EUR';
+}
 
 
 /**
@@ -50,14 +134,24 @@ export class Controller {
   private readonly userId: string;
   private readonly primaryKey: string;
   private readonly targetEnvironment: ControllerOptions['targetEnvironment'];
-  private readonly currency: ControllerOptions['currency'];
+  private readonly currency: Exclude<ControllerOptions['currency'], undefined>;
+
   constructor({ callbackHost, userApiKey, userId, primaryKey, targetEnvironment, currency }: ControllerOptions) {
     this.callbackHost = callbackHost;
     this.userApiKey = userApiKey;
     this.userId = userId;
     this.primaryKey = primaryKey;
     this.targetEnvironment = targetEnvironment;
-    this.currency = currency;
+    this.currency = currency || defaultCurrencyForEnvironment(targetEnvironment);
+  }
+
+  /**
+   * The base URL for the configured target environment.
+   */
+  private get baseUrl(): string {   //taken fromhttps://momodevelopercommunity.mtn.com/how-to-59/momo-api-production-configuration-101
+    return this.targetEnvironment === 'sandbox'
+      ? `https://sandbox.momodeveloper.mtn.com`
+      : 'https://proxy.momoapi.mtn.com';
   }
 
   /**
@@ -72,21 +166,31 @@ export class Controller {
    */
   async requestToPay(
     amount: string | number,
-    partyIdType: 'MSISDN' | 'EMAIL' | 'PARTY_CODE',
     partyId: string,
+    partyIdType: PartyIdType = 'MSISDN',
+    externalId?: string,
     payerMessage?: string,
     payeeNote?: string,
-    externalId?: string,
   ): Promise<RequestToPayResponse> {
-    
     const token = await this.getToken();
     const referenceId = await this.generateUUID();
-    externalId = externalId || await this.generateUUID();
+    const MESSAGE = `Payment request for ${amount} ${this.currency}, Reference ID: ${referenceId}`;
 
-    return new Promise((resolve, reject) => {
-      const options = {
-        method: 'POST',
-        url: 'https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay',
+    externalId = externalId || (await this.generateUUID());
+    payerMessage = payerMessage || MESSAGE;
+    payeeNote = payeeNote || MESSAGE;
+
+    const response = await axios.post(
+      `${this.baseUrl}/collection/v1_0/requesttopay`,
+      {
+        amount,
+        currency: this.currency,
+        externalId,
+        payer: { partyIdType, partyId },
+        payerMessage,
+        payeeNote,
+      },
+      {
         headers: {
           'Content-Type': 'application/json',
           'X-Reference-Id': referenceId,
@@ -94,76 +198,55 @@ export class Controller {
           'Ocp-Apim-Subscription-Key': this.primaryKey,
           Authorization: 'Bearer ' + token,
         },
-        body: JSON.stringify({
-          amount: amount,
-          currency: this.currency,
-          externalId: externalId,
-          payer: { partyIdType: partyIdType, partyId: partyId },
-          payerMessage: payerMessage,
-          payeeNote: payeeNote,
-        }),
-      };
+      }
+    );
 
-      request(options, (error, response) => {
-        if (error) {
-          reject(error);
-        } else {
-          const requestToPay = response.statusCode;
-          resolve({ responseCode: requestToPay, referenceId: referenceId });
-        }
-      });
-    });
+    const subresult = {
+      statusCode: response.status, referenceId, externalId, payerMessage, payeeNote
+    };
+
+    if (response.status.toString().startsWith('2')) {
+      return { 'ok': true, ...subresult };
+    }
+    else{
+      return { 'ok': false, error: { code: response.data.code || '', message: response.data.message || '' }, ...subresult };
+    }
   }
 
-  private getToken(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const authorizationBasic = Buffer.from(this.userId + ':' + this.userApiKey).toString('base64');
+  private async getToken(): Promise<string> {
+    const authorizationBasic = Buffer.from(this.userId + ':' + this.userApiKey).toString('base64');
 
-      const options = {
-        method: 'POST',
-        url: 'https://sandbox.momodeveloper.mtn.com/collection/token/',
+    const response = await axios.post(
+      `${this.baseUrl}/collection/token/`,
+      {},
+      {
         headers: {
           'Ocp-Apim-Subscription-Key': this.primaryKey,
           Authorization: 'Basic ' + authorizationBasic,
         },
-      };
+      }
+    );
 
-      request(options, (error, response) => {
-        if (error) {
-          reject(error);
-        } else {
-          const token = JSON.parse(response.body).access_token;
-          if (token) {
-            resolve(token);
-          }
-        }
-      });
-    });
+    return response.data.access_token;
   }
 
   /**
    * Retrieves the transaction status for a given reference ID.
    */
-  async getTransactionStatus(referenceId: string): Promise<Record<string, unknown>> {
+  async getRequestToPayTransactionStatus(referenceId: string): Promise<RequestToPayTransactionStatus> {
     const token = await this.getToken();
-    return new Promise((resolve, reject) => {
-      const options = {
-        method: 'GET',
-        url: `https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/${referenceId}`,
+
+    const response = await axios.get(
+      `${this.baseUrl}/collection/v1_0/requesttopay/${referenceId}`,
+      {
         headers: {
           'X-Target-Environment': this.targetEnvironment,
           'Ocp-Apim-Subscription-Key': this.primaryKey,
           Authorization: 'Bearer ' + token,
         },
-      };
-      request(options, (error, response) => {
-        if (error) {
-          reject(error);
-        } else {
-          const transactionStatus = JSON.parse(response.body);
-          resolve(transactionStatus);
-        }
-      });
-    });
+      }
+    );
+
+    return response.data;
   }
 }
