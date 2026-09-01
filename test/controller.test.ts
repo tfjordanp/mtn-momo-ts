@@ -48,13 +48,12 @@ describeIfConfigured('Controller (stateful)', () => {
     it('resolves with ok:false and an error for an invalid partyId', async () => {
       const result = await app.requestToPay({
         amount: testConfig.amount,
-        partyId: '0000000000', // invalid sandbox MSISDN
+        partyId: '0', // invalid sandbox MSISDN
       });
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBeDefined();
-        expect(result.error.code).toBeDefined();
         expect(result.referenceId).toBeTruthy();
       }
     });

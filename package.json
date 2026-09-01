@@ -27,13 +27,13 @@
     "prepublishOnly": "npm run clean && npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
-
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tfjordanp/mtn-momo-ts.git"
   },
   "keywords": [
+    "momo-api",
     "momo",
     "mtn-momo",
     "payments",

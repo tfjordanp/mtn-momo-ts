@@ -80,6 +80,7 @@ export type RequestToPayResponse = {
   externalId: string;
   payerMessage: string;
   payeeNote: string;
+  accessToken: string;
 } & (
   | { ok: true }
   | { ok: false; error: ErrorReason }
@@ -209,29 +210,40 @@ export class Controller {
     payerMessage = payerMessage || MESSAGE;
     payeeNote = payeeNote || MESSAGE;
 
-    const response = await axios.post(
-      `${this.baseUrl}/collection/v1_0/requesttopay`,
-      {
-        amount,
-        currency: this.currency,
-        externalId,
-        payer: { partyIdType, partyId },
-        payerMessage,
-        payeeNote,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Reference-Id': referenceId,
-          'X-Target-Environment': this.targetEnvironment,
-          'Ocp-Apim-Subscription-Key': this.primaryKey,
-          Authorization: 'Bearer ' + token,
+    let response;
+    try {
+      response = await axios.post(
+        `${this.baseUrl}/collection/v1_0/requesttopay`,
+        {
+          amount,
+          currency: this.currency,
+          externalId,
+          payer: { partyIdType, partyId },
+          payerMessage,
+          payeeNote,
         },
-      }
-    );
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Reference-Id': referenceId,
+            'X-Target-Environment': this.targetEnvironment,
+            'Ocp-Apim-Subscription-Key': this.primaryKey,
+            Authorization: 'Bearer ' + token,
+          },
+        }
+      );
+    }
+    catch (error: any) {
+      if (error.response) {
+        response = error.response;
+      } else {
+        throw error;
+      } 
+    }
+    
 
     const subresult = {
-      statusCode: response.status, referenceId, externalId, payerMessage, payeeNote
+      statusCode: response.status, referenceId, externalId, payerMessage, payeeNote, accessToken: 'Bearer ' + token
     };
 
     if (response.status.toString().startsWith('2')) {
@@ -275,9 +287,10 @@ export class Controller {
         },
       }
     );
-
     return response.data;
   }
+
+
 
   /**
    * Initiates a request to pay and polls the transaction status until it
@@ -293,7 +306,6 @@ export class Controller {
    * terminal status is reached, `'timeout'` is returned.
    */
   async requestToPayAndWait({
-
     amount,
     partyId,
     partyIdType,
