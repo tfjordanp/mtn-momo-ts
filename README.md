@@ -47,109 +47,183 @@ The `targetEnvironment` option selects which MTN MoMo environment to target. It 
 - `'mtnzambia'`
 - `'mtnbenin'`
 - `'mtnsouthafrica'`
+- `'mtncongo'`
+- `'mtnswaziland'`
+- `'mtnguineaconakry'`
+- `'mtnliberia'`
 
-### CommonJS
+Each environment has a **default currency** (used when `currency` is omitted), defined in `DEFAULT_TARGET_CURRENCY`:
+
+| Environment | Default currency |
+| --- | --- |
+| `sandbox` | `EUR` |
+| `mtnuganda` | `UGX` |
+| `mtnghana` | `GHS` |
+| `mtnivorycoast` | `XOF` |
+| `mtnzambia` | `ZMW` |
+| `mtncameroon` | `XAF` |
+| `mtnbenin` | `XOF` |
+| `mtncongo` | `XAF` |
+| `mtnswaziland` | `SZL` |
+| `mtnguineaconakry` | `GNF` |
+| `mtnsouthafrica` | `ZAR` |
+| `mtnliberia` | `LRD` |
+
+
+### Stateless helpers (recommended)
+
+The package exposes stateless helpers that create a `Controller` internally, so you don't need to manage one yourself.
+
+#### CommonJS
 
 ```js
-const { makeRequest } = require('mtn-momo-ts');
+const { requestToPay } = require('mtn-momo-ts');
 
-makeRequest({
+requestToPay({
   callbackHost: '<callbackHost>',
   userApiKey: '<userApiKey>',
   userId: '<userId>',
   primaryKey: '<primaryKey>',
   targetEnvironment: 'mtncameroon',
-  currency: 'XAF',
   amount: '<amount>',
-  externalId: '<externalId>',
   partyIdType: 'MSISDN',
   partyId: '<partyId>',
   payerMessage: '<payerMessage>',
   payeeNote: '<payeeNote>'
 })
-  .then(({ response, status }) => {
-    console.log('Response:', response);
-    console.log('Transaction Status:', status);
+  .then(({ ok, statusCode, referenceId }) => {
+    console.log('OK:', ok);
+    console.log('Status Code:', statusCode);
+    console.log('Reference ID:', referenceId);
   })
   .catch(error => {
     console.error('Error:', error);
   });
 ```
 
-### ESM
+#### ESM
 
 ```js
-import { makeRequest } from 'mtn-momo-ts';
+import { requestToPay } from 'mtn-momo-ts';
 
-const { response, status } = await makeRequest({
+const { ok, statusCode, referenceId } = await requestToPay({
   callbackHost: '<callbackHost>',
   userApiKey: '<userApiKey>',
   userId: '<userId>',
   primaryKey: '<primaryKey>',
   targetEnvironment: 'mtncameroon',
-  currency: 'XAF',
   amount: '<amount>',
-  externalId: '<externalId>',
   partyIdType: 'MSISDN',
   partyId: '<partyId>',
   payerMessage: '<payerMessage>',
   payeeNote: '<payeeNote>'
 });
 
-console.log('Response:', response);
-console.log('Transaction Status:', status);
+console.log('OK:', ok);
+console.log('Status Code:', statusCode);
+console.log('Reference ID:', referenceId);
 ```
 
-### TypeScript
+#### TypeScript
 
 ```ts
-import { makeRequest, Controller, MakeRequestOptions, TargetEnvironment } from 'mtn-momo-ts';
+import { requestToPay, RequestToPayOptions } from 'mtn-momo-ts';
 
-const options: MakeRequestOptions = {
+const options: RequestToPayOptions = {
   callbackHost: '<callbackHost>',
   userApiKey: '<userApiKey>',
   userId: '<userId>',
   primaryKey: '<primaryKey>',
   targetEnvironment: 'mtncameroon',
-  currency: 'XAF',
   amount: '<amount>',
-  externalId: '<externalId>',
   partyIdType: 'MSISDN',
   partyId: '<partyId>',
   payerMessage: '<payerMessage>',
   payeeNote: '<payeeNote>'
 };
 
-const { response, status } = await makeRequest(options);
+const { ok, statusCode, referenceId } = await requestToPay(options);
 ```
+
+#### Waiting for a terminal status
+
+Use `requestToPayAndWait` to initiate a request and poll until it reaches a terminal status (`SUCCESSFUL` or `FAILED`), using exponential backoff and a maximum polling duration:
+
+```js
+import { requestToPayAndWait } from 'mtn-momo-ts';
+
+const result = await requestToPayAndWait({
+  callbackHost: '<callbackHost>',
+  userApiKey: '<userApiKey>',
+  userId: '<userId>',
+  primaryKey: '<primaryKey>',
+  targetEnvironment: 'mtncameroon',
+  amount: '<amount>',
+  partyId: '<partyId>',
+  maxDurationMs: 60_000,   // optional, defaults to 60s
+  initialDelayMs: 1_000,   // optional, defaults to 1s
+  backoffMultiplier: 2     // optional, defaults to 2
+});
+
+if ('status' in result) {
+  console.log('Terminal status:', result.status);
+} else {
+  console.log('Request failed:', result.error);
+}
+```
+
 
 
 ## API Reference
 
-**`makeRequest(options)`**
+### Stateless helpers
 
-Initiates a request to pay using the MTN Momo Collections API.
+**`requestToPay(options)`**
+
+Initiates a request to pay using the MTN Momo Collections API. Creates a `Controller` internally.
 
 - **`options`**: An object containing the following properties:
-  - **`callbackHost`**: The callback URL for receiving payment notifications.
+  - **`callbackHost`**: *(optional)* The callback URL for receiving payment notifications.
   - **`userApiKey`**: Your MTN Momo user API key.
   - **`userId`**: Your MTN Momo user ID.
   - **`primaryKey`**: Your MTN Momo primary key.
   - **`targetEnvironment`**: The MTN MoMo target environment (e.g. `'sandbox'`, `'mtncameroon'`).
-  - **`currency`**: The currency code for the transactions.
+  - **`currency`**: *(optional)* The currency code. Defaults to the environment's default currency.
   - **`amount`**: The amount to be paid.
-  - **`externalId`**: An ID generated by your system to uniquely identify the transaction.
-  - **`partyIdType`**: The type of the party ID (`'MSISDN'`, `'EMAIL'`, or `'PARTY_CODE'`).
+  - **`partyIdType`**: *(optional)* The type of the party ID (`'MSISDN'`, `'EMAIL'`, or `'PARTY_CODE'`). Defaults to `'MSISDN'`.
   - **`partyId`**: The party ID of the payer.
-  - **`payerMessage`**: A message that will be displayed to the payer.
-  - **`payeeNote`**: A note that will be displayed to the payee.
+  - **`externalId`**: *(optional)* An ID generated by your system to uniquely identify the transaction.
+  - **`payerMessage`**: *(optional)* A message that will be displayed to the payer.
+  - **`payeeNote`**: *(optional)* A note that will be displayed to the payee.
 
-Returns a promise that resolves to an object with the following properties:
+Returns a promise that resolves to a `RequestToPayResponse`:
 
-- **`response`**: The response from the API.
-- **`status`**: The transaction status.
+- **`ok`**: `true` on success, `false` on failure.
+- **`statusCode`**: The HTTP status code from the API.
+- **`referenceId`**: The reference ID generated for the transaction.
+- **`error`**: *(only when `ok` is `false`)* An object with `code` and `message`.
 
-**`Controller`** Class
+**`getRequestToPayTransactionStatus(options)`**
+
+Retrieves the transaction status for a given reference ID. Creates a `Controller` internally.
+
+- **`options`**: An object containing the `ControllerOptions` (credentials) plus:
+  - **`referenceId`**: The reference ID of the transaction.
+
+Returns a promise that resolves to a `RequestToPayTransactionStatus` object (`amount`, `currency`, `financialTransactionId`, `externalId`, `payer`, `payerMessage`, `payeeNote`, `status`, `reason`).
+
+**`requestToPayAndWait(options)`**
+
+Initiates a request to pay and polls the transaction status until it reaches a terminal status (`SUCCESSFUL` or `FAILED`). Uses **exponential backoff**, a **maximum polling duration**, and **stops at a terminal status** (per MTN best practices).
+
+- **`options`**: A `RequestToPayOptions` object plus:
+  - **`maxDurationMs`**: *(optional)* Maximum polling duration in ms. Defaults to `60_000`.
+  - **`initialDelayMs`**: *(optional)* Initial backoff delay in ms. Defaults to `1_000`.
+  - **`backoffMultiplier`**: *(optional)* Backoff multiplier. Defaults to `2`.
+
+Returns a promise that resolves to a `RequestToPayTransactionStatus` **or** a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`). Throws if the maximum polling duration is exceeded.
+
+### `Controller` class
 
 The **`Controller`** class provides methods to interact with the MTN Momo Collections API.
 
@@ -168,30 +242,41 @@ const app = new Controller({
 });
 ```
 
-**`requestToPay(amount, partyIdType, partyId, payerMessage?, payeeNote?, externalId?)`**
+**`requestToPay({ amount, partyId, partyIdType?, externalId?, payerMessage?, payeeNote? })`**
 
 Initiates a request to pay. The currency is taken from the `Controller` options.
 
-- **`amount`**: The amount to be paid.
-- **`partyIdType`**: The type of the party ID (`'MSISDN'`, `'EMAIL'`, or `'PARTY_CODE'`).
-- **`partyId`**: The party ID of the payer.
-- **`payerMessage`**: *(optional)* A message that will be displayed to the payer.
-- **`payeeNote`**: *(optional)* A note that will be displayed to the payee.
-- **`externalId`**: *(optional)* An ID generated by your system to uniquely identify the transaction.
+Returns a promise that resolves to a `RequestToPayResponse` (see above).
 
-Returns a promise that resolves to an object with the following properties:
-
-- **`responseCode`**: The response code from the API.
-- **`referenceId`**: The reference ID generated for the transaction.
-
-
-**`getTransactionStatus(referenceId)`**
+**`getRequestToPayTransactionStatus({ referenceId })`**
 
 Retrieves the transaction status for a given reference ID.
 
 - **`referenceId`**: The reference ID of the transaction.
 
-Returns a promise that resolves to the transaction status object.
+Returns a promise that resolves to a `RequestToPayTransactionStatus` object.
+
+**`requestToPayAndWait({ amount, partyId, partyIdType?, externalId?, payerMessage?, payeeNote?, maxDurationMs?, initialDelayMs?, backoffMultiplier? })`**
+
+Stateful version of the stateless `requestToPayAndWait` helper. Initiates a request to pay and polls the transaction status until it reaches a terminal status (`SUCCESSFUL` or `FAILED`), using exponential backoff and a maximum polling duration. The currency and credentials come from the `Controller` instance.
+
+- **`maxDurationMs`**: *(optional)* Maximum polling duration in ms. Defaults to `60_000`.
+- **`initialDelayMs`**: *(optional)* Initial backoff delay in ms. Defaults to `1_000`.
+- **`backoffMultiplier`**: *(optional)* Backoff multiplier. Defaults to `2`.
+
+Returns a promise that resolves to a `RequestToPayTransactionStatus` **or** a `RequestToPayFailure` (the `ok: false` branch of `RequestToPayResponse`). Throws if the maximum polling duration is exceeded.
+
+
+### Types
+
+- **`TargetEnvironment`**: Union of known MTN MoMo environments (or any custom string).
+- **`ErrorCode`**: Union of MTN MoMo API error codes (or any custom string).
+- **`PartyIdType`**: `'MSISDN' | 'EMAIL' | 'PARTY_CODE'`.
+- **`ErrorReason`**: `{ code?: ErrorCode; message?: string }`.
+- **`RequestToPayResponse`**: Discriminated union on `ok` (see above).
+- **`RequestToPayTransactionStatus`**: The transaction status response body.
+- **`DEFAULT_TARGET_CURRENCY`**: Map of environment → default currency.
+
 
 ## Development
 

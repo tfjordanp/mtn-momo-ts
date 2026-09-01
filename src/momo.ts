@@ -85,6 +85,12 @@ export type RequestToPayResponse = {
   | { ok: false; error: ErrorReason }
 );
 
+/**
+ * The failure branch of {@link RequestToPayResponse} (i.e. `ok: false`).
+ */
+export type RequestToPayFailure = Extract<RequestToPayResponse, { ok: false }>;
+
+
 export interface RequestToPayTransactionStatus {
   amount?: string;
   currency?: string;
@@ -137,6 +143,16 @@ export interface RequestToPayOptions{
 export interface GetRequestToPayTransactionStatusOptions{
   referenceId: string;
 }
+
+export interface RequestToPayAndWaitOptions extends RequestToPayOptions {
+  /** Maximum polling duration in milliseconds. Defaults to `60_000`. */
+  maxDurationMs?: number;
+  /** Initial backoff delay in milliseconds. Defaults to `1_000`. */
+  initialDelayMs?: number;
+  /** Backoff multiplier applied after each poll. Defaults to `2`. */
+  backoffMultiplier?: number;
+}
+
 
 /**
  * Provides methods to interact with the MTN Momo Collections API.
@@ -262,4 +278,57 @@ export class Controller {
 
     return response.data;
   }
+
+  /**
+   * Initiates a request to pay and polls the transaction status until it
+   * reaches a terminal status (`SUCCESSFUL` or `FAILED`).
+   *
+   * Polling follows the MTN best practices:
+   * - Uses exponential backoff between polls.
+   * - Stops after a maximum polling duration.
+   * - Stops as soon as a terminal status is reached.
+   *
+   * If the initial request to pay fails (`ok: false`), the failure response is
+   * returned directly. If the maximum polling duration is exceeded before a
+   * terminal status is reached, an error is thrown.
+   */
+  async requestToPayAndWait({
+    amount,
+    partyId,
+    partyIdType,
+    externalId,
+    payerMessage,
+    payeeNote,
+    maxDurationMs = 60_000,
+    initialDelayMs = 1_000,
+    backoffMultiplier = 2,
+  }: RequestToPayAndWaitOptions): Promise<RequestToPayTransactionStatus | RequestToPayFailure | 'timeout'> {
+    const response = await this.requestToPay({ amount, partyId, partyIdType, externalId, payerMessage, payeeNote });
+    if (!response.ok) {
+      return response;
+    }
+
+    const referenceId = response.referenceId;
+    const startTime = Date.now();
+    let delay = initialDelayMs;
+
+    await sleep(delay);  //initial delay before first poll
+
+    while (Date.now() - startTime < maxDurationMs) {
+      const status = await this.getRequestToPayTransactionStatus({ referenceId });
+      if (status.status === 'SUCCESSFUL' || status.status === 'FAILED') {
+        return status;
+      }
+      await sleep(delay);
+      delay *= backoffMultiplier;
+    }
+
+    return 'timeout';
+  }
 }
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+
