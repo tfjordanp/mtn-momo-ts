@@ -125,6 +125,19 @@ function defaultCurrencyForEnvironment(
 }
 
 
+export interface RequestToPayOptions{
+  amount: string | number;
+  partyId: string;
+  partyIdType?: PartyIdType;
+  externalId?: string;
+  payerMessage?: string;
+  payeeNote?: string;
+}
+
+export interface GetRequestToPayTransactionStatusOptions{
+  referenceId: string;
+}
+
 /**
  * Provides methods to interact with the MTN Momo Collections API.
  */
@@ -164,14 +177,14 @@ export class Controller {
   /**
    * Initiates a request to pay.
    */
-  async requestToPay(
-    amount: string | number,
-    partyId: string,
-    partyIdType: PartyIdType = 'MSISDN',
-    externalId?: string,
-    payerMessage?: string,
-    payeeNote?: string,
-  ): Promise<RequestToPayResponse> {
+  async requestToPay({
+    amount,
+    partyId,
+    partyIdType = 'MSISDN',
+    externalId,
+    payerMessage,
+    payeeNote,
+  }: RequestToPayOptions): Promise<RequestToPayResponse> {
     const token = await this.getToken();
     const referenceId = await this.generateUUID();
     const MESSAGE = `Payment request for ${amount} ${this.currency}, Reference ID: ${referenceId}`;
@@ -209,7 +222,7 @@ export class Controller {
       return { 'ok': true, ...subresult };
     }
     else{
-      return { 'ok': false, error: { code: response.data.code || '', message: response.data.message || '' }, ...subresult };
+      return { 'ok': false, error: { code: response.data.code, message: response.data.message }, ...subresult };
     }
   }
 
@@ -233,7 +246,7 @@ export class Controller {
   /**
    * Retrieves the transaction status for a given reference ID.
    */
-  async getRequestToPayTransactionStatus(referenceId: string): Promise<RequestToPayTransactionStatus> {
+  async getRequestToPayTransactionStatus({ referenceId }: GetRequestToPayTransactionStatusOptions): Promise<RequestToPayTransactionStatus> {
     const token = await this.getToken();
 
     const response = await axios.get(
