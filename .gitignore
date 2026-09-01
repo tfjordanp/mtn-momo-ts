@@ -10,5 +10,5 @@
 # build output
 /dist
 
-/momo-sandbox
+/momo-sandbox/.git
 
