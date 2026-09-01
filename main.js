@@ -1,4 +1,4 @@
-const { makeRequest } = require('./momoModule');
+const { makeRequest } = require('mtn-momo-api');
 
 makeRequest({
   callbackHost: "<callbackHost>",

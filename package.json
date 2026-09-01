@@ -2,23 +2,29 @@
   "name": "mtn-momo-api",
   "version": "1.0.8",
   "description": "The MTN-Momo-API is an npm package that provides a convenient and simplified way to interact with the MoMo (Mobile Money) API for making financial transactions. It abstracts the complexities of the API and offers a streamlined interface for requesting payments and retrieving transaction status.",
-  "main": "momoModule.js",
-  "types": "index.d.ts",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./momoModule.mjs",
-      "require": "./momoModule.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     }
   },
   "files": [
-    "momo.js",
-    "momo.mjs",
-    "momoModule.js",
-    "momoModule.mjs",
-    "index.d.ts"
+    "dist"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && node scripts/fix-cjs-package.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prepublishOnly": "npm run clean && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -38,10 +44,14 @@
   "homepage": "https://github.com/ogwok/mtn-momo#readme",
   "dependencies": {
     "btoa": "^1.2.1",
+    "currency-codes-ts": "^3.0.0",
     "request": "^2.88.2",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/request": "^2.48.13",
+    "@types/uuid": "^10.0.0",
     "typescript": "^7.0.2"
   }
 }

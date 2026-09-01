@@ -173,8 +173,26 @@ Retrieves the transaction status for a given reference ID.
 
 Returns a promise that resolves to the transaction status object.
 
+## Development
+
+This package is written in **TypeScript** and compiled to both **CommonJS** and **ESM** builds (plus auto-generated `.d.ts` type definitions) in the `dist/` directory.
+
+```bash
+# Install dependencies
+npm install
+
+# Build both CJS and ESM outputs into dist/
+npm run build
+
+# Clean the dist/ directory
+npm run clean
+```
+
+The build runs `tsc` twice — once for CommonJS (`dist/cjs`) and once for ESM (`dist/esm`) — and writes a `dist/cjs/package.json` marking that directory as CommonJS so Node resolves both formats correctly.
+
 ## Contributing
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
 
 ## License
 This project is licensed under the MIT License.
