@@ -3,9 +3,23 @@
   "version": "1.0.8",
   "description": "The MTN-Momo-API is an npm package that provides a convenient and simplified way to interact with the MoMo (Mobile Money) API for making financial transactions. It abstracts the complexities of the API and offers a streamlined interface for requesting payments and retrieving transaction status.",
   "main": "momoModule.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./momoModule.mjs",
+      "require": "./momoModule.js"
+    }
+  },
+  "files": [
+    "momo.js",
+    "momo.mjs",
+    "momoModule.js",
+    "momoModule.mjs",
+    "index.d.ts"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "type": "module"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -26,5 +40,8 @@
     "btoa": "^1.2.1",
     "request": "^2.88.2",
     "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
   }
 }

@@ -30,11 +30,14 @@ Use the package manager [npm](https://www.npmjs.com/package/mtn-momo-api) to ins
 ```bash
 npm install mtn-momo-api --save
 ```
+
 ## Usage
-Here's an example of how you can use the MTN Momo Collections library in your project:
 
-```bash
+This package ships with both **CommonJS** and **ESM** entry points, plus full **TypeScript** type definitions.
 
+### CommonJS
+
+```js
 const { makeRequest } = require('mtn-momo-api');
 
 makeRequest({
@@ -57,8 +60,53 @@ makeRequest({
   .catch(error => {
     console.error('Error:', error);
   });
-
 ```
+
+### ESM
+
+```js
+import { makeRequest } from 'mtn-momo-api';
+
+const { response, status } = await makeRequest({
+  callbackHost: '<callbackHost>',
+  userApiKey: '<userApiKey>',
+  userId: '<userId>',
+  primaryKey: '<primaryKey>',
+  amount: '<amount>',
+  currency: '<currency>',
+  externalId: '<externalId>',
+  partyIdType: '<partyIdType>',
+  partyId: '<partyId>',
+  payerMessage: '<payerMessage>',
+  payeeNote: '<payeeNote>'
+});
+
+console.log('Response:', response);
+console.log('Transaction Status:', status);
+```
+
+### TypeScript
+
+```ts
+import { makeRequest, Controller, MakeRequestOptions } from 'mtn-momo-api';
+
+const options: MakeRequestOptions = {
+  callbackHost: '<callbackHost>',
+  userApiKey: '<userApiKey>',
+  userId: '<userId>',
+  primaryKey: '<primaryKey>',
+  amount: '<amount>',
+  currency: '<currency>',
+  externalId: '<externalId>',
+  partyIdType: '<partyIdType>',
+  partyId: '<partyId>',
+  payerMessage: '<payerMessage>',
+  payeeNote: '<payeeNote>'
+};
+
+const { response, status } = await makeRequest(options);
+```
+
 ## API Reference
 
 **`makeRequest(options)`**
@@ -77,6 +125,7 @@ Initiates a request to pay using the MTN Momo Collections API.
   - **`partyId`**: The party ID of the payer.
   - **`payerMessage`**: A message that will be displayed to the payer.
   - **`payeeNote`**: A note that will be displayed to the payee.
+
 Returns a promise that resolves to an object with the following properties:
 
 - **`response`**: The response from the API.
@@ -88,8 +137,7 @@ The **`Controller`** class provides methods to interact with the MTN Momo Collec
 
 Constructor
 
-```bash
-
+```js
 const { Controller } = require('mtn-momo-api');
 
 const app = new Controller({
@@ -98,9 +146,9 @@ const app = new Controller({
   userId: '<userId>',
   primaryKey: '<primaryKey>',
 });
-
 ```
-**`requestToPay(amount, currency, externalId,  partyIdType, partyId, payerMessage, payeeNote)`**
+
+**`requestToPay(amount, currency, externalId, partyIdType, partyId, payerMessage, payeeNote)`**
 
 Initiates a request to pay.
 
@@ -122,6 +170,7 @@ Returns a promise that resolves to an object with the following properties:
 Retrieves the transaction status for a given reference ID.
 
 - **`referenceId`**: The reference ID of the transaction.
+
 Returns a promise that resolves to the transaction status object.
 
 ## Contributing
@@ -129,6 +178,3 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## License
 This project is licensed under the MIT License.
-
-
-
